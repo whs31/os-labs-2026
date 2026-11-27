@@ -1,0 +1,90 @@
+# Лабораторная работа 11. Драйвер символьного устройства (Рязанцев Д.Л., whs31)
+
+whs31@whs3-pc:~/work/my/os-labs/lab11/src$ uname -r
+7.3.6-arch1-1
+whs31@whs3-pc:~/work/my/os-labs/lab11/src$ ls
+initramfs.img
+Makefile
+modules.order
+Module.symvers
+run-vm.sh
+test
+test.c
+whs31_chardev.c
+whs31_chardev.h
+whs31_chardev.ko
+whs31_chardev.mod
+whs31_chardev.mod.c
+whs31_chardev.mod.o
+whs31_chardev.o
+whs31@whs3-pc:~/work/my/os-labs/lab11/src$ make clean > /dev/null && make
+make -C /lib/modules/7.3.6-arch1-1/build M=/home/whs31/work/my/os-labs/lab11/src modules
+make[1]: Entering directory '/usr/lib/modules/7.3.6-arch1-1/build'
+make[2]: Entering directory '/home/whs31/work/my/os-labs/lab11/src'
+  CC [M]  whs31_chardev.o
+  MODPOST Module.symvers
+  CC [M]  whs31_chardev.mod.o
+  CC [M]  .module-common.o
+  LD [M]  whs31_chardev.ko
+  BTF [M] whs31_chardev.ko
+make[2]: Leaving directory '/home/whs31/work/my/os-labs/lab11/src'
+make[1]: Leaving directory '/usr/lib/modules/7.3.6-arch1-1/build'
+cc -static -O2 -Wall -o test test.c
+whs31@whs3-pc:~/work/my/os-labs/lab11/src$ modinfo whs31_chardev.ko
+filename:       /home/whs31/work/my/os-labs/lab11/src/whs31_chardev.ko
+description:    Простой драйвер символьного устройства
+author:         whs31 (Рязанцев Д.Л.)
+license:        GPL
+srcversion:     25F5F429FC430706EAF05E4
+depends:        
+name:           whs31_chardev
+retpoline:      Y
+vermagic:       7.3.6-arch1-1 SMP preempt mod_unload 
+whs31@whs3-pc:~/work/my/os-labs/lab11/src$ ./run-vm.sh
+whs31@lab11-vm:~# uname -a
+Linux lab11-vm 7.3.6-arch1-1 #1 SMP PREEMPT_DYNAMIC Tue, 24 Nov 2026 04:08:01 +0000 x86_64 GNU/Linux
+whs31@lab11-vm:~# insmod whs31_chardev.ko && lsmod | grep whs31
+whs31_chardev 20480 0 - Live 0xffffffffc0600000 (OE)
+whs31@lab11-vm:~# dmesg | tail -n 1
+[    7.614714] whs31_chardev: загружен, major=241 minor=0
+whs31@lab11-vm:~# ls -l /dev/whs31_chardev && grep whs31 /proc/devices
+crw-------    1 0        0         241,   0 Nov 27 16:34 /dev/whs31_chardev
+241 whs31_chardev
+whs31@lab11-vm:~# cat /sys/class/whs31/whs31_chardev/dev
+241:0
+whs31@lab11-vm:~# echo "hello from whs31" > /dev/whs31_chardev
+whs31@lab11-vm:~# cat /dev/whs31_chardev
+hello from whs31
+whs31@lab11-vm:~# echo " + append" >> /dev/whs31_chardev
+whs31@lab11-vm:~# cat /dev/whs31_chardev
+hello from whs31
+ + append
+whs31@lab11-vm:~# ./test
+write: 24 байт
+ioctl GETSIZE: 24
+read: 24 байт -> "Привет от whs31!"
+lseek(-6, SEEK_END) + read: "whs31!"
+whs31@lab11-vm:~# dmesg | tail -n 16
+[    7.622197] whs31_chardev: release (pid 1)
+[    7.623259] whs31_chardev: open (pid 74, cat), открыто раз: 2
+[    7.623264] whs31_chardev: read 17 байт, позиция 17
+[    7.623414] whs31_chardev: release (pid 74)
+[    7.625040] whs31_chardev: open (pid 1, sh), открыто раз: 3
+[    7.625046] whs31_chardev: write 10 байт, размер данных 27
+[    7.625048] whs31_chardev: release (pid 1)
+[    7.626219] whs31_chardev: open (pid 75, cat), открыто раз: 4
+[    7.626223] whs31_chardev: read 27 байт, позиция 27
+[    7.626404] whs31_chardev: release (pid 75)
+[    7.627010] whs31_chardev: open (pid 76, test), открыто раз: 5
+[    7.627012] whs31_chardev: ioctl CLEAR
+[    7.627013] whs31_chardev: write 24 байт, размер данных 24
+[    7.627258] whs31_chardev: read 24 байт, позиция 24
+[    7.627480] whs31_chardev: read 6 байт, позиция 24
+[    7.627660] whs31_chardev: release (pid 76)
+whs31@lab11-vm:~# rmmod whs31_chardev && dmesg | tail -n 2
+[    7.627660] whs31_chardev: release (pid 76)
+[    7.634470] whs31_chardev: выгружен
+whs31@lab11-vm:~# ls /dev/whs31_chardev
+ls: /dev/whs31_chardev: No such file or directory
+whs31@lab11-vm:~# poweroff -f
+[    7.637448] reboot: Power down

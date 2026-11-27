@@ -1,0 +1,9 @@
+videos/
+*.ko
+*.o
+*.mod*
+.*.cmd
+Module.symvers
+modules.order
+initramfs.img
+lab11/src/test
